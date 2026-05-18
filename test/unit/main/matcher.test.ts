@@ -159,4 +159,28 @@ describe("matchUpcomingMeeting", () => {
 		);
 		expect(result).toBeNull();
 	});
+
+	it("matches a candidate roughly 14 days before the meeting (biweekly)", () => {
+		const notes = [
+			note("a", "Coder Sync", "2026-05-06T15:00:00Z"), // 14d back
+		];
+		const result = matchUpcomingMeeting(
+			{ title: "Coder Sync", startTime: upcomingStart },
+			notes,
+		);
+		expect(result?.note.id).toBe("a");
+		expect(result?.confidence).toBeGreaterThan(1);
+	});
+
+	it("gives equal recurrence bonus at 7 and 14 days back", () => {
+		const weekly = matchUpcomingMeeting(
+			{ title: "Coder Sync", startTime: upcomingStart },
+			[note("a", "Coder Sync", "2026-05-13T15:00:00Z")], // 7d
+		);
+		const biweekly = matchUpcomingMeeting(
+			{ title: "Coder Sync", startTime: upcomingStart },
+			[note("b", "Coder Sync", "2026-05-06T15:00:00Z")], // 14d
+		);
+		expect(weekly?.confidence).toBeCloseTo(biweekly?.confidence ?? 0, 5);
+	});
 });

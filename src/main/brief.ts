@@ -14,7 +14,7 @@ export type CurrentStatus = {
 };
 
 const HOME_LOOKAHEAD_DAYS = 7;
-const MATCH_LOOKBACK_DAYS = 8;
+const MATCH_LOOKBACK_DAYS = 15;
 
 export function currentStatus(): CurrentStatus {
 	return {

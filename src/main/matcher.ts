@@ -17,9 +17,9 @@ export type MatchOptions = {
 };
 
 const DEFAULT_MIN_SIMILARITY = 0.5;
-const DEFAULT_LOOKBACK_DAYS = 8;
+const DEFAULT_LOOKBACK_DAYS = 15;
 const DEFAULT_EXCLUDE_RECENT_HOURS = 1;
-const WEEKLY_RECURRENCE_DAYS = 7;
+const RECURRENCE_PERIOD_DAYS = 7;
 const RECURRENCE_BONUS_PER_DAY_OFFSET = 0.04;
 const MAX_RECURRENCE_BONUS = 0.15;
 
@@ -95,10 +95,12 @@ export function matchUpcomingMeeting(
 
 		const daysAgo =
 			(upcoming.startTime.getTime() - createdAtMs) / (24 * 60 * 60 * 1000);
-		const offsetFromWeekly = Math.abs(daysAgo - WEEKLY_RECURRENCE_DAYS);
+		const offsetFromPeriod = Math.abs(
+			daysAgo - Math.round(daysAgo / RECURRENCE_PERIOD_DAYS) * RECURRENCE_PERIOD_DAYS,
+		);
 		const recurrenceBonus = Math.max(
 			0,
-			MAX_RECURRENCE_BONUS - offsetFromWeekly * RECURRENCE_BONUS_PER_DAY_OFFSET,
+			MAX_RECURRENCE_BONUS - offsetFromPeriod * RECURRENCE_BONUS_PER_DAY_OFFSET,
 		);
 		const confidence = similarity + recurrenceBonus;
 
