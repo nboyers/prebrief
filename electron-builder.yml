@@ -1,5 +1,5 @@
-appId: com.meetingbriefer.app
-productName: Meeting Briefer
+appId: com.prebrief.app
+productName: Prebrief
 copyright: Copyright © 2026
 directories:
   output: out

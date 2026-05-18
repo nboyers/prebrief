@@ -32,7 +32,7 @@ export function App() {
 	return (
 		<div className="popover">
 			<header className="popover__header">
-				<span className="popover__title">Meeting Briefer</span>
+				<span className="popover__title">Prebrief</span>
 				<div className="popover__actions">
 					<button
 						className="popover__btn"

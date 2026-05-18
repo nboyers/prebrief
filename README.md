@@ -1,4 +1,4 @@
-# Meeting Briefer
+# Prebrief
 
 A macOS menu-bar app that, before each Google Calendar meeting, finds the
 matching prior Granola note and shows you a quick brief of what happened

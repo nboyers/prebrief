@@ -54,7 +54,7 @@ app.whenReady().then(() => {
 	});
 
 	createMenubar(rendererUrl());
-	log.info("Meeting Briefer ready.");
+	log.info("Prebrief ready.");
 });
 
 app.on("window-all-closed", () => {

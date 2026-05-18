@@ -1,4 +1,4 @@
-# Meeting Briefer — Implementation Plan
+# Prebrief — Implementation Plan
 
 A macOS menu-bar app that, ahead of each Google Calendar meeting, finds the
 matching prior Granola note and shows you a quick brief of what happened
@@ -19,7 +19,7 @@ last time and what to know going in.
 | LLM                 | `@anthropic-ai/sdk` and/or `openai`       | User picks one in settings, supplies own key.                                                                          |
 | Secrets             | **`keytar`** (macOS Keychain)             | OAuth refresh token + LLM API key never touch disk in plaintext.                                                       |
 | Non-secret settings | **`electron-store`** (JSON in `userData`) | Provider choice, model, polling interval, etc.                                                                         |
-| Logging             | `electron-log`                            | Rotating file logs in `~/Library/Logs/MeetingBriefer/`.                                                                |
+| Logging             | `electron-log`                            | Rotating file logs in `~/Library/Logs/Prebrief/`.                                                                      |
 
 ### Why not Tauri/Swift?
 
@@ -251,7 +251,7 @@ window):
 ## 5. Security
 
 - **OAuth refresh token** and **LLM API key**: macOS Keychain via `keytar`,
-  service name `com.meetingbriefer.app`. Never serialized to JSON on disk.
+  service name `com.prebrief.app`. Never serialized to JSON on disk.
 - **Granola cache**: read-only, never re-written.
 - **Renderer**: `contextIsolation: true`, `nodeIntegration: false`,
   `sandbox: true`. All privileged ops go through a typed IPC bridge.

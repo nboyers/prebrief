@@ -20,7 +20,7 @@ export type MenubarRefs = {
 
 export function createMenubar(rendererUrl: string): MenubarRefs {
 	const tray = new Tray(buildTrayImage());
-	tray.setToolTip("Meeting Briefer");
+	tray.setToolTip("Prebrief");
 	tray.setTitle(TRAY_TITLE);
 
 	const window = new BrowserWindow({
