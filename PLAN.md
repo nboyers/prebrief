@@ -268,9 +268,15 @@ Each milestone ends in a runnable state I can demo to you.
    - Electron + Vite + React scaffold, menubar with placeholder popover,
      settings view, IPC bridge, logging.
 
-2. **M2 — Granola cache reader**
-   - Parse your real cache (you'll point me at the path), build fixtures,
-     `loadGranolaNotes()` + matcher unit tests passing.
+2. **M2 — Granola client + matcher (DONE)**
+   - `GranolaClient` calls `public-api.granola.ai/v1/notes` (paginated),
+     token-bucket rate limited at 25 burst / 5 rps.
+   - `matcher` normalizes titles, scores by Jaccard + 7-day recurrence
+     bonus, returns top match within an 8-day lookback window.
+   - `secrets` module stores the `grn_…` key via Electron `safeStorage`
+     (Keychain on macOS); no native deps.
+   - Settings UI lets you paste, test, and disconnect the Granola key.
+   - 25 passing unit tests for matcher, rate limiter, and client.
 
 3. **M3 — Google Calendar**
    - OAuth desktop flow, poller, "Next meeting" displayed in popover.

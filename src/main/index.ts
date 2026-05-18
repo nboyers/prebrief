@@ -1,9 +1,10 @@
-import { app } from "electron";
+import { BrowserWindow, app } from "electron";
 import path from "node:path";
 import log from "./log";
 import { createMenubar } from "./menubar";
 import { registerHandler } from "./ipc";
 import { settings } from "./settings";
+import { granolaService } from "./granola/service";
 import type { AppStatus, BriefState } from "../shared/types";
 
 const isDev = !app.isPackaged;
@@ -17,7 +18,7 @@ function rendererUrl(): string {
 
 function currentStatus(): AppStatus {
 	return {
-		granolaConnected: false,
+		granolaConnected: granolaService.hasApiKey(),
 		googleConnected: false,
 		llmConfigured: false,
 	};
@@ -33,6 +34,13 @@ function currentBriefState(): BriefState {
 		return { kind: "needs-setup", missing };
 	}
 	return { kind: "no-upcoming" };
+}
+
+function broadcastStatus(): void {
+	for (const window of BrowserWindow.getAllWindows()) {
+		window.webContents.send("status:updated", currentStatus());
+		window.webContents.send("brief:updated", currentBriefState());
+	}
 }
 
 app.whenReady().then(() => {
@@ -51,6 +59,20 @@ app.whenReady().then(() => {
 	});
 	registerHandler("app:open-settings", () => {
 		log.info("Settings requested; renderer handles routing.");
+	});
+
+	registerHandler("granola:get-status", () => ({
+		hasKey: granolaService.hasApiKey(),
+	}));
+	registerHandler("granola:save-api-key", async (_event, { apiKey }) => {
+		const result = await granolaService.saveApiKey(apiKey);
+		broadcastStatus();
+		return result;
+	});
+	registerHandler("granola:test-connection", () => granolaService.test());
+	registerHandler("granola:clear-api-key", () => {
+		granolaService.clearApiKey();
+		broadcastStatus();
 	});
 
 	createMenubar(rendererUrl());

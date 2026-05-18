@@ -3,6 +3,7 @@ import type { BriefState } from "../shared/types";
 import { Brief } from "./views/Brief";
 import { Empty } from "./views/Empty";
 import { NeedsSetup } from "./views/NeedsSetup";
+import { Settings } from "./views/Settings";
 
 export function App() {
 	const [view, setView] = useState<"brief" | "settings">("brief");
@@ -26,7 +27,7 @@ export function App() {
 	}, []);
 
 	if (view === "settings") {
-		return <SettingsPlaceholder onBack={() => setView("brief")} />;
+		return <Settings onBack={() => setView("brief")} />;
 	}
 
 	return (
@@ -76,23 +77,4 @@ function renderBody(state: BriefState | null) {
 		case "error":
 			return <Empty title="Something went wrong" subtitle={state.message} />;
 	}
-}
-
-function SettingsPlaceholder({ onBack }: { onBack: () => void }) {
-	return (
-		<div className="popover">
-			<header className="popover__header">
-				<span className="popover__title">Settings</span>
-				<button className="popover__btn" type="button" onClick={onBack}>
-					Back
-				</button>
-			</header>
-			<main className="popover__body">
-				<p className="muted">
-					Settings UI lands in M3 (Google Calendar) and M4 (LLM provider). For
-					now, this is a placeholder.
-				</p>
-			</main>
-		</div>
-	);
 }

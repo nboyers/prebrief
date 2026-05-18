@@ -4,6 +4,10 @@ export type AppStatus = {
 	llmConfigured: boolean;
 };
 
+export type GranolaTestOutcome =
+	| { ok: true; sampleCount: number }
+	| { ok: false; error: string };
+
 export type UpcomingMeeting = {
 	id: string;
 	title: string;
