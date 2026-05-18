@@ -3,21 +3,10 @@ import type {
 	GoogleSignInOutcome,
 	GoogleTestOutcome,
 	GranolaTestOutcome,
+	LlmProvider,
+	LlmStatus,
+	LlmTestOutcome,
 } from "../../shared/types";
-
-type GranolaSave =
-	| { kind: "idle" }
-	| { kind: "saving" }
-	| { kind: "saved"; outcome: GranolaTestOutcome }
-	| { kind: "error"; message: string };
-
-type GoogleState =
-	| { kind: "idle" }
-	| { kind: "saving" }
-	| { kind: "signing-in" }
-	| { kind: "signed-in"; outcome: GoogleSignInOutcome }
-	| { kind: "tested"; outcome: GoogleTestOutcome }
-	| { kind: "error"; message: string };
 
 export function Settings({ onBack }: { onBack: () => void }) {
 	return (
@@ -31,14 +20,17 @@ export function Settings({ onBack }: { onBack: () => void }) {
 			<main className="popover__body">
 				<GranolaSection />
 				<GoogleSection />
-				<section className="settings__section settings__section--muted">
-					<h3 className="settings__heading">LLM provider</h3>
-					<p className="muted settings__hint">Lands in M4.</p>
-				</section>
+				<LlmSection />
 			</main>
 		</div>
 	);
 }
+
+type GranolaSave =
+	| { kind: "idle" }
+	| { kind: "saving" }
+	| { kind: "saved"; outcome: GranolaTestOutcome }
+	| { kind: "error"; message: string };
 
 function GranolaSection() {
 	const [hasKey, setHasKey] = useState(false);
@@ -93,8 +85,8 @@ function GranolaSection() {
 		<section className="settings__section">
 			<h3 className="settings__heading">Granola</h3>
 			<p className="muted settings__hint">
-				Create a Personal API key in the Granola desktop app: workspace name →
-				API keys. Requires a Business or Enterprise plan.
+				Create a Personal API key in Granola: workspace name → API keys.
+				Requires a Business or Enterprise plan.
 			</p>
 			{hasKey ? (
 				<div className="settings__row">
@@ -153,6 +145,14 @@ function GranolaSection() {
 		</section>
 	);
 }
+
+type GoogleState =
+	| { kind: "idle" }
+	| { kind: "saving" }
+	| { kind: "signing-in" }
+	| { kind: "signed-in"; outcome: GoogleSignInOutcome }
+	| { kind: "tested"; outcome: GoogleTestOutcome }
+	| { kind: "error"; message: string };
 
 function GoogleSection() {
 	const [hasClient, setHasClient] = useState(false);
@@ -235,13 +235,12 @@ function GoogleSection() {
 				<>
 					<p className="muted settings__hint">
 						Create your own OAuth Desktop client at{" "}
-						<code>console.cloud.google.com</code>:
+						<code>console.cloud.google.com</code>.
 						<br />
 						<small>
-							Project → APIs & Services → Credentials → Create Credentials →
-							OAuth client ID → Desktop app. Enable the Google Calendar API on
-							the same project. On the OAuth consent screen, add your own email
-							as a test user.
+							Project → APIs & Services → Credentials → OAuth client ID →
+							Desktop app. Enable the Google Calendar API on the same project.
+							Add your own email as a test user in the OAuth consent screen.
 						</small>
 					</p>
 					<div className="settings__row settings__row--stack">
@@ -347,4 +346,198 @@ function GoogleSection() {
 			)}
 		</section>
 	);
+}
+
+type LlmState =
+	| { kind: "idle" }
+	| { kind: "saving" }
+	| { kind: "tested"; outcome: LlmTestOutcome };
+
+const EMPTY_STATUS: LlmStatus = {
+	activeProvider: "anthropic",
+	hasAnthropicKey: false,
+	hasOpenAiKey: false,
+	anthropicModel: "",
+	openaiModel: "",
+};
+
+function LlmSection() {
+	const [status, setStatus] = useState<LlmStatus>(EMPTY_STATUS);
+	const [keyInput, setKeyInput] = useState("");
+	const [modelInput, setModelInput] = useState("");
+	const [state, setState] = useState<LlmState>({ kind: "idle" });
+
+	useEffect(() => {
+		let cancelled = false;
+		refresh();
+		return () => {
+			cancelled = true;
+		};
+		async function refresh() {
+			const next = await window.api.invoke("llm:get-status", undefined);
+			if (cancelled) return;
+			setStatus(next);
+			setModelInput(modelFor(next, next.activeProvider));
+		}
+	}, []);
+
+	async function reload(modelOverride?: string) {
+		const next = await window.api.invoke("llm:get-status", undefined);
+		setStatus(next);
+		setModelInput(modelOverride ?? modelFor(next, next.activeProvider));
+	}
+
+	async function onProviderChange(provider: LlmProvider) {
+		await window.api.invoke("llm:set-provider", { provider });
+		setState({ kind: "idle" });
+		await reload();
+	}
+
+	async function onSaveKey() {
+		setState({ kind: "saving" });
+		await window.api.invoke("llm:save-key", {
+			provider: status.activeProvider,
+			apiKey: keyInput,
+		});
+		setKeyInput("");
+		setState({ kind: "idle" });
+		await reload();
+	}
+
+	async function onClearKey() {
+		await window.api.invoke("llm:clear-key", {
+			provider: status.activeProvider,
+		});
+		setState({ kind: "idle" });
+		await reload();
+	}
+
+	async function onSaveModel() {
+		setState({ kind: "saving" });
+		await window.api.invoke("llm:set-model", {
+			provider: status.activeProvider,
+			model: modelInput,
+		});
+		setState({ kind: "idle" });
+		await reload(modelInput);
+	}
+
+	async function onTest() {
+		setState({ kind: "saving" });
+		const outcome = await window.api.invoke("llm:test", undefined);
+		setState({ kind: "tested", outcome });
+	}
+
+	const hasActiveKey =
+		status.activeProvider === "anthropic"
+			? status.hasAnthropicKey
+			: status.hasOpenAiKey;
+
+	return (
+		<section className="settings__section">
+			<h3 className="settings__heading">LLM provider</h3>
+			<p className="muted settings__hint">
+				Used to summarize the prior meeting into a brief. Bring your own key.
+			</p>
+			<div className="settings__row">
+				<label className="settings__radio">
+					<input
+						type="radio"
+						name="llm-provider"
+						checked={status.activeProvider === "anthropic"}
+						onChange={() => onProviderChange("anthropic")}
+					/>
+					Anthropic
+				</label>
+				<label className="settings__radio">
+					<input
+						type="radio"
+						name="llm-provider"
+						checked={status.activeProvider === "openai"}
+						onChange={() => onProviderChange("openai")}
+					/>
+					OpenAI
+				</label>
+			</div>
+
+			<div className="settings__row settings__row--stack">
+				<input
+					className="settings__input"
+					type="text"
+					placeholder="Model"
+					value={modelInput}
+					onChange={(event) => setModelInput(event.target.value)}
+					spellCheck={false}
+					autoComplete="off"
+				/>
+				<button
+					className="popover__btn"
+					type="button"
+					onClick={onSaveModel}
+					disabled={
+						state.kind === "saving" ||
+						modelInput.trim().length === 0 ||
+						modelInput.trim() === modelFor(status, status.activeProvider)
+					}
+				>
+					Save model
+				</button>
+			</div>
+
+			{hasActiveKey ? (
+				<div className="settings__row">
+					<span className="settings__status">Key stored in Keychain.</span>
+					<div className="settings__actions">
+						<button
+							className="popover__btn"
+							type="button"
+							onClick={onTest}
+							disabled={state.kind === "saving"}
+						>
+							Test
+						</button>
+						<button className="popover__btn" type="button" onClick={onClearKey}>
+							Disconnect
+						</button>
+					</div>
+				</div>
+			) : (
+				<div className="settings__row">
+					<input
+						className="settings__input"
+						type="password"
+						placeholder={
+							status.activeProvider === "anthropic" ? "sk-ant-…" : "sk-…"
+						}
+						value={keyInput}
+						onChange={(event) => setKeyInput(event.target.value)}
+						spellCheck={false}
+						autoComplete="off"
+					/>
+					<button
+						className="popover__btn"
+						type="button"
+						onClick={onSaveKey}
+						disabled={state.kind === "saving" || keyInput.trim().length === 0}
+					>
+						{state.kind === "saving" ? "Saving…" : "Save"}
+					</button>
+				</div>
+			)}
+			{state.kind === "tested" && state.outcome.ok && (
+				<p className="settings__feedback settings__feedback--ok">
+					Reached {state.outcome.model}.
+				</p>
+			)}
+			{state.kind === "tested" && !state.outcome.ok && (
+				<p className="settings__feedback settings__feedback--err">
+					{state.outcome.error}
+				</p>
+			)}
+		</section>
+	);
+}
+
+function modelFor(status: LlmStatus, provider: LlmProvider): string {
+	return provider === "anthropic" ? status.anthropicModel : status.openaiModel;
 }

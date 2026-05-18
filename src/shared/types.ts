@@ -19,6 +19,20 @@ export type GoogleStatus = {
 	hasSession: boolean;
 };
 
+export type LlmProvider = "anthropic" | "openai";
+
+export type LlmStatus = {
+	activeProvider: LlmProvider;
+	hasAnthropicKey: boolean;
+	hasOpenAiKey: boolean;
+	anthropicModel: string;
+	openaiModel: string;
+};
+
+export type LlmTestOutcome =
+	| { ok: true; model: string }
+	| { ok: false; error: string };
+
 export type UpcomingMeeting = {
 	id: string;
 	title: string;

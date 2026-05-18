@@ -1,8 +1,11 @@
 import type { BriefState, UpcomingMeeting } from "../shared/types";
 import { granolaService } from "./granola/service";
+import type { GranolaNoteDetail } from "./granola/types";
 import { googleService } from "./google/service";
+import { llmService } from "./llm/service";
+import type { LlmConfig, SummarizerInput } from "./llm/types";
 import log from "./log";
-import { matchUpcomingMeeting } from "./matcher";
+import { matchUpcomingMeeting, type MatchResult } from "./matcher";
 
 export type CurrentStatus = {
 	granolaConnected: boolean;
@@ -14,8 +17,22 @@ export function currentStatus(): CurrentStatus {
 	return {
 		granolaConnected: granolaService.hasApiKey(),
 		googleConnected: googleService.hasSession(),
-		llmConfigured: false,
+		llmConfigured: llmService.hasActiveKey(),
 	};
+}
+
+const briefCache = new Map<string, string>();
+
+function briefCacheKey(
+	eventId: string,
+	noteId: string,
+	config: LlmConfig,
+): string {
+	return `${config.provider}|${config.model}|${eventId}|${noteId}`;
+}
+
+export function clearBriefCache(): void {
+	briefCache.clear();
 }
 
 export async function composeBriefState(): Promise<BriefState> {
@@ -36,24 +53,65 @@ export async function composeBriefState(): Promise<BriefState> {
 	}
 	if (!upcoming) return { kind: "no-upcoming" };
 
-	const matched = await findPriorNote(upcoming);
-	if (!matched) return { kind: "no-prior-note", meeting: upcoming };
+	const match = await findPriorNote(upcoming);
+	if (!match) return { kind: "no-prior-note", meeting: upcoming };
 
+	const config = llmService.getActiveConfig();
+	const cacheKey = briefCacheKey(upcoming.id, match.note.id, config);
+	const cached = briefCache.get(cacheKey);
+	if (cached) {
+		return buildReady(upcoming, match, cached);
+	}
+
+	const detail = await fetchPriorNoteDetail(match.note.id);
+	const input: SummarizerInput = {
+		upcoming: {
+			title: upcoming.title,
+			startTime: upcoming.startTime,
+			attendees: upcoming.attendees,
+		},
+		priorNote: {
+			id: match.note.id,
+			title: match.note.title,
+			createdAt: match.note.created_at,
+			summary: detail?.summary,
+		},
+	};
+
+	let markdown: string;
+	try {
+		markdown = await llmService.summarize(input);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		log.warn("LLM summarize failed", err);
+		return { kind: "error", message };
+	}
+
+	briefCache.set(cacheKey, markdown);
+	return buildReady(upcoming, match, markdown);
+}
+
+function buildReady(
+	upcoming: UpcomingMeeting,
+	match: MatchResult,
+	markdown: string,
+): BriefState {
 	return {
 		kind: "ready",
 		meeting: upcoming,
 		brief: {
 			eventId: upcoming.id,
-			priorNoteId: matched.note.id,
-			priorNoteTitle: matched.note.title,
-			priorNoteDate: matched.note.created_at,
-			markdown:
-				"_LLM summary lands in M4. For now, this is the matched prior note._",
+			priorNoteId: match.note.id,
+			priorNoteTitle: match.note.title,
+			priorNoteDate: match.note.created_at,
+			markdown,
 		},
 	};
 }
 
-async function findPriorNote(upcoming: UpcomingMeeting) {
+async function findPriorNote(
+	upcoming: UpcomingMeeting,
+): Promise<MatchResult | null> {
 	const client = granolaService.getClient();
 	if (!client) return null;
 	const startTime = new Date(upcoming.startTime);
@@ -63,6 +121,19 @@ async function findPriorNote(upcoming: UpcomingMeeting) {
 		return matchUpcomingMeeting({ title: upcoming.title, startTime }, notes);
 	} catch (err) {
 		log.warn("Granola fetch for matching failed", err);
+		return null;
+	}
+}
+
+async function fetchPriorNoteDetail(
+	id: string,
+): Promise<GranolaNoteDetail | null> {
+	const client = granolaService.getClient();
+	if (!client) return null;
+	try {
+		return await client.getNote(id);
+	} catch (err) {
+		log.warn("Granola getNote failed", err);
 		return null;
 	}
 }

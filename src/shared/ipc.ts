@@ -5,6 +5,9 @@ import type {
 	GoogleStatus,
 	GoogleTestOutcome,
 	GranolaTestOutcome,
+	LlmProvider,
+	LlmStatus,
+	LlmTestOutcome,
 } from "./types";
 
 export type IpcRequestMap = {
@@ -28,6 +31,18 @@ export type IpcRequestMap = {
 	"google:sign-in": { params: void; result: GoogleSignInOutcome };
 	"google:sign-out": { params: void; result: void };
 	"google:test-connection": { params: void; result: GoogleTestOutcome };
+	"llm:get-status": { params: void; result: LlmStatus };
+	"llm:save-key": {
+		params: { provider: LlmProvider; apiKey: string };
+		result: void;
+	};
+	"llm:clear-key": { params: { provider: LlmProvider }; result: void };
+	"llm:set-provider": { params: { provider: LlmProvider }; result: void };
+	"llm:set-model": {
+		params: { provider: LlmProvider; model: string };
+		result: void;
+	};
+	"llm:test": { params: void; result: LlmTestOutcome };
 };
 
 export type IpcEventMap = {

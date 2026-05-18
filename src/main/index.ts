@@ -1,8 +1,9 @@
 import { BrowserWindow, app } from "electron";
 import path from "node:path";
-import { composeBriefState, currentStatus } from "./brief";
+import { clearBriefCache, composeBriefState, currentStatus } from "./brief";
 import { granolaService } from "./granola/service";
 import { googleService } from "./google/service";
+import { llmService } from "./llm/service";
 import log from "./log";
 import { createMenubar } from "./menubar";
 import { registerHandler } from "./ipc";
@@ -83,6 +84,35 @@ app.whenReady().then(() => {
 		await broadcastStatus();
 	});
 	registerHandler("google:test-connection", () => googleService.test());
+
+	registerHandler("llm:get-status", () => ({
+		activeProvider: llmService.getActiveProvider(),
+		hasAnthropicKey: llmService.hasKey("anthropic"),
+		hasOpenAiKey: llmService.hasKey("openai"),
+		anthropicModel: llmService.getActiveModel("anthropic"),
+		openaiModel: llmService.getActiveModel("openai"),
+	}));
+	registerHandler("llm:save-key", async (_event, { provider, apiKey }) => {
+		llmService.saveKey(provider, apiKey);
+		clearBriefCache();
+		await broadcastStatus();
+	});
+	registerHandler("llm:clear-key", async (_event, { provider }) => {
+		llmService.clearKey(provider);
+		clearBriefCache();
+		await broadcastStatus();
+	});
+	registerHandler("llm:set-provider", async (_event, { provider }) => {
+		llmService.setActiveProvider(provider);
+		clearBriefCache();
+		await broadcastStatus();
+	});
+	registerHandler("llm:set-model", async (_event, { provider, model }) => {
+		llmService.setModel(provider, model);
+		clearBriefCache();
+		await broadcastStatus();
+	});
+	registerHandler("llm:test", () => llmService.test());
 
 	createMenubar(rendererUrl());
 	log.info("Prebrief ready.");

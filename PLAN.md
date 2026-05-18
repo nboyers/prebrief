@@ -289,9 +289,21 @@ Each milestone ends in a runnable state I can demo to you.
      title and date (LLM-generated summary still pending M4).
    - 17 new unit tests (OAuth utilities + Calendar parsing).
 
-4. **M4 — Briefs end-to-end**
-   - Matcher + summarizer wired; popover renders the markdown brief 5 min
-     before a meeting; notification fires.
+4. **M4 — Briefs end-to-end (DONE)**
+   - LLM router supports Anthropic (`/v1/messages`) and OpenAI
+     (`/v1/chat/completions`). Direct `fetch`, no SDKs.
+   - Strict three-section system prompt (`**Last time** / **Open threads**
+/ **Heads-up**`, 1–3 short bullets each). Prior-note summary is
+     truncated to 6 000 chars to keep token budgets predictable.
+   - Brief composer fetches the matched note's detail, summarizes, and
+     caches the result in memory keyed by
+     `{provider, model, eventId, priorNoteId}`. Cache is invalidated
+     whenever the LLM key, provider, or model changes.
+   - Tiny custom Markdown renderer (~150 LOC, no react-markdown
+     dependency) handles headings, bullets, bold, inline code.
+   - Settings UI gains an LLM section: provider radio, editable model
+     string, per-provider API key, test button.
+   - 15 new unit tests for prompt, Anthropic client, OpenAI client.
 
 5. **M5 — Packaging**
    - `electron-builder` config, ad-hoc signed `.dmg`, README install

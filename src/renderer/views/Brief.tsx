@@ -1,4 +1,5 @@
 import type { Brief as BriefData, UpcomingMeeting } from "../../shared/types";
+import { Markdown } from "../components/Markdown";
 
 type Props = {
 	meeting: UpcomingMeeting;
@@ -18,7 +19,7 @@ export function Brief({ meeting, brief }: Props) {
 					{brief.priorNoteDate ? ` · ${formatDate(brief.priorNoteDate)}` : null}
 				</p>
 			)}
-			<pre className="brief__markdown">{brief.markdown}</pre>
+			<Markdown source={brief.markdown} />
 		</article>
 	);
 }

@@ -7,6 +7,8 @@ type SecretsStoreSchema = {
 	googleClientIdEnc?: string;
 	googleClientSecretEnc?: string;
 	googleRefreshTokenEnc?: string;
+	anthropicApiKeyEnc?: string;
+	openaiApiKeyEnc?: string;
 };
 
 const store = new Store<SecretsStoreSchema>({ name: "secrets" });
@@ -15,6 +17,8 @@ const GRANOLA_KEY = "granolaApiKeyEnc";
 const GOOGLE_CLIENT_ID_KEY = "googleClientIdEnc";
 const GOOGLE_CLIENT_SECRET_KEY = "googleClientSecretEnc";
 const GOOGLE_REFRESH_TOKEN_KEY = "googleRefreshTokenEnc";
+const ANTHROPIC_KEY = "anthropicApiKeyEnc";
+const OPENAI_KEY = "openaiApiKeyEnc";
 
 function isAvailable(): boolean {
 	try {
@@ -91,5 +95,31 @@ export const secrets = {
 	},
 	clearGoogleRefreshToken(): void {
 		store.delete(GOOGLE_REFRESH_TOKEN_KEY);
+	},
+
+	hasAnthropicApiKey(): boolean {
+		return typeof store.get(ANTHROPIC_KEY) === "string";
+	},
+	setAnthropicApiKey(plain: string): void {
+		store.set(ANTHROPIC_KEY, encryptToBase64(plain));
+	},
+	getAnthropicApiKey(): string | null {
+		return decryptFromBase64(store.get(ANTHROPIC_KEY));
+	},
+	clearAnthropicApiKey(): void {
+		store.delete(ANTHROPIC_KEY);
+	},
+
+	hasOpenAiApiKey(): boolean {
+		return typeof store.get(OPENAI_KEY) === "string";
+	},
+	setOpenAiApiKey(plain: string): void {
+		store.set(OPENAI_KEY, encryptToBase64(plain));
+	},
+	getOpenAiApiKey(): string | null {
+		return decryptFromBase64(store.get(OPENAI_KEY));
+	},
+	clearOpenAiApiKey(): void {
+		store.delete(OPENAI_KEY);
 	},
 };
