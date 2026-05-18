@@ -1,0 +1,55 @@
+{
+	"name": "meeting-briefer",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Menu-bar app that briefs you on upcoming meetings using Granola notes from last time.",
+	"author": "Noah",
+	"main": "dist/main/index.js",
+	"scripts": {
+		"dev": "concurrently -k -n vite,electron -c blue,green \"pnpm dev:renderer\" \"pnpm dev:electron\"",
+		"dev:renderer": "vite",
+		"dev:electron": "wait-on tcp:5173 && tsc -p tsconfig.main.json && electron .",
+		"build": "pnpm build:renderer && pnpm build:main",
+		"build:renderer": "vite build",
+		"build:main": "tsc -p tsconfig.main.json",
+		"typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+		"lint": "eslint . --ext .ts,.tsx",
+		"format": "prettier --write \"src/**/*.{ts,tsx,json,md}\" \"*.{md,json,yml}\"",
+		"format:check": "prettier --check \"src/**/*.{ts,tsx,json,md}\" \"*.{md,json,yml}\"",
+		"test": "vitest run",
+		"dist": "pnpm build && electron-builder --mac dmg --publish=never"
+	},
+	"dependencies": {
+		"electron-log": "^5.2.0",
+		"electron-store": "^8.2.0"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.17.0",
+		"@types/node": "^22.10.0",
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"@typescript-eslint/eslint-plugin": "^8.18.0",
+		"@typescript-eslint/parser": "^8.18.0",
+		"@vitejs/plugin-react": "^4.3.4",
+		"concurrently": "^9.1.0",
+		"electron": "^33.2.1",
+		"electron-builder": "^25.1.8",
+		"eslint": "^9.17.0",
+		"eslint-config-prettier": "^9.1.0",
+		"globals": "^17.6.0",
+		"prettier": "^3.4.2",
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1",
+		"typescript": "^5.7.2",
+		"vite": "^6.0.3",
+		"vitest": "^2.1.8",
+		"wait-on": "^8.0.1"
+	},
+	"packageManager": "pnpm@11.1.2",
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"electron",
+			"esbuild"
+		]
+	}
+}

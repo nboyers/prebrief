@@ -1,0 +1,27 @@
+appId: com.meetingbriefer.app
+productName: Meeting Briefer
+copyright: Copyright © 2026
+directories:
+  output: out
+  buildResources: assets
+asar: true
+files:
+  - dist/**/*
+  - package.json
+  - assets/**/*
+extraMetadata:
+  main: dist/main/index.js
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    LSUIElement: true
+dmg:
+  writeUpdateInfo: false
