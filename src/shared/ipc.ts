@@ -1,4 +1,11 @@
-import type { AppStatus, BriefState, GranolaTestOutcome } from "./types";
+import type {
+	AppStatus,
+	BriefState,
+	GoogleSignInOutcome,
+	GoogleStatus,
+	GoogleTestOutcome,
+	GranolaTestOutcome,
+} from "./types";
 
 export type IpcRequestMap = {
 	"app:get-status": { params: void; result: AppStatus };
@@ -12,6 +19,15 @@ export type IpcRequestMap = {
 	};
 	"granola:test-connection": { params: void; result: GranolaTestOutcome };
 	"granola:clear-api-key": { params: void; result: void };
+	"google:get-status": { params: void; result: GoogleStatus };
+	"google:save-client": {
+		params: { clientId: string; clientSecret: string };
+		result: void;
+	};
+	"google:clear-client": { params: void; result: void };
+	"google:sign-in": { params: void; result: GoogleSignInOutcome };
+	"google:sign-out": { params: void; result: void };
+	"google:test-connection": { params: void; result: GoogleTestOutcome };
 };
 
 export type IpcEventMap = {

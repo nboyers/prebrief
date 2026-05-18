@@ -219,3 +219,20 @@ body,
 .settings__feedback--err {
 	color: #cf222e;
 }
+
+.settings__row--stack {
+	flex-direction: column;
+	align-items: stretch;
+}
+
+.settings__hint code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 11px;
+	background: var(--bg-elev);
+	padding: 1px 4px;
+	border-radius: 3px;
+}
+
+.settings__hint small {
+	color: var(--muted);
+}

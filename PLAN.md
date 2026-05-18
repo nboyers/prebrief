@@ -278,8 +278,16 @@ Each milestone ends in a runnable state I can demo to you.
    - Settings UI lets you paste, test, and disconnect the Granola key.
    - 25 passing unit tests for matcher, rate limiter, and client.
 
-3. **M3 — Google Calendar**
-   - OAuth desktop flow, poller, "Next meeting" displayed in popover.
+3. **M3 — Google Calendar (DONE)**
+   - PKCE loopback OAuth (no `googleapis` SDK), token refresh, refresh
+     token in `safeStorage`.
+   - Calendar v3 `events.list` against `primary` with `singleEvents=true`.
+   - Settings UI: paste own Desktop OAuth client → sign in browser →
+     test → sign out.
+   - Brief state now fetches the next upcoming meeting and, when Granola
+     is also connected, runs the M2 matcher to surface the prior note
+     title and date (LLM-generated summary still pending M4).
+   - 17 new unit tests (OAuth utilities + Calendar parsing).
 
 4. **M4 — Briefs end-to-end**
    - Matcher + summarizer wired; popover renders the markdown brief 5 min

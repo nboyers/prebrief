@@ -1,11 +1,12 @@
 import { BrowserWindow, app } from "electron";
 import path from "node:path";
+import { composeBriefState, currentStatus } from "./brief";
+import { granolaService } from "./granola/service";
+import { googleService } from "./google/service";
 import log from "./log";
 import { createMenubar } from "./menubar";
 import { registerHandler } from "./ipc";
 import { settings } from "./settings";
-import { granolaService } from "./granola/service";
-import type { AppStatus, BriefState } from "../shared/types";
 
 const isDev = !app.isPackaged;
 
@@ -16,30 +17,12 @@ function rendererUrl(): string {
 	return `file://${path.join(__dirname, "../renderer/index.html")}`;
 }
 
-function currentStatus(): AppStatus {
-	return {
-		granolaConnected: granolaService.hasApiKey(),
-		googleConnected: false,
-		llmConfigured: false,
-	};
-}
-
-function currentBriefState(): BriefState {
+async function broadcastStatus(): Promise<void> {
 	const status = currentStatus();
-	const missing: Array<keyof AppStatus> = [];
-	if (!status.granolaConnected) missing.push("granolaConnected");
-	if (!status.googleConnected) missing.push("googleConnected");
-	if (!status.llmConfigured) missing.push("llmConfigured");
-	if (missing.length > 0) {
-		return { kind: "needs-setup", missing };
-	}
-	return { kind: "no-upcoming" };
-}
-
-function broadcastStatus(): void {
+	const brief = await composeBriefState();
 	for (const window of BrowserWindow.getAllWindows()) {
-		window.webContents.send("status:updated", currentStatus());
-		window.webContents.send("brief:updated", currentBriefState());
+		window.webContents.send("status:updated", status);
+		window.webContents.send("brief:updated", brief);
 	}
 }
 
@@ -53,7 +36,7 @@ app.whenReady().then(() => {
 	}
 
 	registerHandler("app:get-status", () => currentStatus());
-	registerHandler("app:get-brief-state", () => currentBriefState());
+	registerHandler("app:get-brief-state", () => composeBriefState());
 	registerHandler("app:quit", () => {
 		app.quit();
 	});
@@ -66,14 +49,40 @@ app.whenReady().then(() => {
 	}));
 	registerHandler("granola:save-api-key", async (_event, { apiKey }) => {
 		const result = await granolaService.saveApiKey(apiKey);
-		broadcastStatus();
+		await broadcastStatus();
 		return result;
 	});
 	registerHandler("granola:test-connection", () => granolaService.test());
-	registerHandler("granola:clear-api-key", () => {
+	registerHandler("granola:clear-api-key", async () => {
 		granolaService.clearApiKey();
-		broadcastStatus();
+		await broadcastStatus();
 	});
+
+	registerHandler("google:get-status", () => ({
+		hasClient: googleService.hasClient(),
+		hasSession: googleService.hasSession(),
+	}));
+	registerHandler(
+		"google:save-client",
+		async (_event, { clientId, clientSecret }) => {
+			googleService.saveClient(clientId, clientSecret);
+			await broadcastStatus();
+		},
+	);
+	registerHandler("google:clear-client", async () => {
+		googleService.clearClient();
+		await broadcastStatus();
+	});
+	registerHandler("google:sign-in", async () => {
+		const result = await googleService.signIn();
+		await broadcastStatus();
+		return result;
+	});
+	registerHandler("google:sign-out", async () => {
+		googleService.signOut();
+		await broadcastStatus();
+	});
+	registerHandler("google:test-connection", () => googleService.test());
 
 	createMenubar(rendererUrl());
 	log.info("Prebrief ready.");

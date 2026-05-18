@@ -8,6 +8,17 @@ export type GranolaTestOutcome =
 	| { ok: true; sampleCount: number }
 	| { ok: false; error: string };
 
+export type GoogleSignInOutcome = { ok: true } | { ok: false; error: string };
+
+export type GoogleTestOutcome =
+	| { ok: true; sampleEvent?: { title: string; startTime: string } }
+	| { ok: false; error: string };
+
+export type GoogleStatus = {
+	hasClient: boolean;
+	hasSession: boolean;
+};
+
 export type UpcomingMeeting = {
 	id: string;
 	title: string;
