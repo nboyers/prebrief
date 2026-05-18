@@ -1,6 +1,11 @@
 import { BrowserWindow, app } from "electron";
 import path from "node:path";
-import { clearBriefCache, composeBriefState, currentStatus } from "./brief";
+import {
+	clearBriefCache,
+	composeBriefForMeeting,
+	composeHomeState,
+	currentStatus,
+} from "./brief";
 import { granolaService } from "./granola/service";
 import { googleService } from "./google/service";
 import { llmService } from "./llm/service";
@@ -18,12 +23,12 @@ function rendererUrl(): string {
 	return `file://${path.join(__dirname, "../renderer/index.html")}`;
 }
 
-async function broadcastStatus(): Promise<void> {
+async function broadcast(): Promise<void> {
 	const status = currentStatus();
-	const brief = await composeBriefState();
+	const home = await composeHomeState();
 	for (const window of BrowserWindow.getAllWindows()) {
 		window.webContents.send("status:updated", status);
-		window.webContents.send("brief:updated", brief);
+		window.webContents.send("home:updated", home);
 	}
 }
 
@@ -37,7 +42,10 @@ app.whenReady().then(() => {
 	}
 
 	registerHandler("app:get-status", () => currentStatus());
-	registerHandler("app:get-brief-state", () => composeBriefState());
+	registerHandler("app:get-home-state", () => composeHomeState());
+	registerHandler("app:brief-for-meeting", (_event, { meeting }) =>
+		composeBriefForMeeting(meeting),
+	);
 	registerHandler("app:quit", () => {
 		app.quit();
 	});
@@ -50,13 +58,15 @@ app.whenReady().then(() => {
 	}));
 	registerHandler("granola:save-api-key", async (_event, { apiKey }) => {
 		const result = await granolaService.saveApiKey(apiKey);
-		await broadcastStatus();
+		clearBriefCache();
+		await broadcast();
 		return result;
 	});
 	registerHandler("granola:test-connection", () => granolaService.test());
 	registerHandler("granola:clear-api-key", async () => {
 		granolaService.clearApiKey();
-		await broadcastStatus();
+		clearBriefCache();
+		await broadcast();
 	});
 
 	registerHandler("google:get-status", () => ({
@@ -67,21 +77,21 @@ app.whenReady().then(() => {
 		"google:save-client",
 		async (_event, { clientId, clientSecret }) => {
 			googleService.saveClient(clientId, clientSecret);
-			await broadcastStatus();
+			await broadcast();
 		},
 	);
 	registerHandler("google:clear-client", async () => {
 		googleService.clearClient();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("google:sign-in", async () => {
 		const result = await googleService.signIn();
-		await broadcastStatus();
+		await broadcast();
 		return result;
 	});
 	registerHandler("google:sign-out", async () => {
 		googleService.signOut();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("google:test-connection", () => googleService.test());
 
@@ -95,22 +105,22 @@ app.whenReady().then(() => {
 	registerHandler("llm:save-key", async (_event, { provider, apiKey }) => {
 		llmService.saveKey(provider, apiKey);
 		clearBriefCache();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("llm:clear-key", async (_event, { provider }) => {
 		llmService.clearKey(provider);
 		clearBriefCache();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("llm:set-provider", async (_event, { provider }) => {
 		llmService.setActiveProvider(provider);
 		clearBriefCache();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("llm:set-model", async (_event, { provider, model }) => {
 		llmService.setModel(provider, model);
 		clearBriefCache();
-		await broadcastStatus();
+		await broadcast();
 	});
 	registerHandler("llm:test", () => llmService.test());
 

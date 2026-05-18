@@ -49,10 +49,13 @@ export type Brief = {
 	markdown: string;
 };
 
-export type BriefState =
+export type HomeState =
 	| { kind: "needs-setup"; missing: Array<keyof AppStatus> }
-	| { kind: "no-upcoming" }
+	| { kind: "ready"; meetings: UpcomingMeeting[] }
+	| { kind: "error"; message: string };
+
+export type BriefState =
 	| { kind: "loading"; meeting: UpcomingMeeting }
 	| { kind: "no-prior-note"; meeting: UpcomingMeeting }
 	| { kind: "ready"; meeting: UpcomingMeeting; brief: Brief }
-	| { kind: "error"; message: string };
+	| { kind: "error"; meeting: UpcomingMeeting; message: string };

@@ -288,3 +288,76 @@ body,
 .settings__radio input {
 	margin: 0;
 }
+
+.popover__title--with-back {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.meeting-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.meeting-group__heading {
+	margin: 0 0 4px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--muted);
+}
+
+.meeting-group__items {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.meeting-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border-radius: 5px;
+}
+
+.meeting-row:hover {
+	background: var(--bg-elev);
+}
+
+.meeting-row__left {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.meeting-row__time {
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+	color: var(--muted);
+}
+
+.meeting-row__title {
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.meeting-row__btn {
+	flex-shrink: 0;
+}
+
+.brief__meeting {
+	margin-bottom: 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--border);
+}

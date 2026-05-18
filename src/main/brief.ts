@@ -1,4 +1,4 @@
-import type { BriefState, UpcomingMeeting } from "../shared/types";
+import type { BriefState, HomeState, UpcomingMeeting } from "../shared/types";
 import { granolaService } from "./granola/service";
 import type { GranolaNoteDetail } from "./granola/types";
 import { googleService } from "./google/service";
@@ -12,6 +12,9 @@ export type CurrentStatus = {
 	googleConnected: boolean;
 	llmConfigured: boolean;
 };
+
+const HOME_LOOKAHEAD_DAYS = 7;
+const MATCH_LOOKBACK_DAYS = 8;
 
 export function currentStatus(): CurrentStatus {
 	return {
@@ -35,7 +38,7 @@ export function clearBriefCache(): void {
 	briefCache.clear();
 }
 
-export async function composeBriefState(): Promise<BriefState> {
+export async function composeHomeState(): Promise<HomeState> {
 	const status = currentStatus();
 	const missing: Array<keyof CurrentStatus> = [];
 	if (!status.granolaConnected) missing.push("granolaConnected");
@@ -43,32 +46,35 @@ export async function composeBriefState(): Promise<BriefState> {
 	if (!status.llmConfigured) missing.push("llmConfigured");
 	if (missing.length > 0) return { kind: "needs-setup", missing };
 
-	let upcoming: UpcomingMeeting | null;
 	try {
-		upcoming = await googleService.getNextUpcoming();
+		const meetings = await googleService.listUpcomingMeetings(
+			HOME_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000,
+		);
+		return { kind: "ready", meetings };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		log.warn("Failed to fetch upcoming meeting", err);
+		log.warn("Failed to list upcoming meetings", err);
 		return { kind: "error", message };
 	}
-	if (!upcoming) return { kind: "no-upcoming" };
+}
 
-	const match = await findPriorNote(upcoming);
-	if (!match) return { kind: "no-prior-note", meeting: upcoming };
+export async function composeBriefForMeeting(
+	meeting: UpcomingMeeting,
+): Promise<BriefState> {
+	const match = await findPriorNote(meeting);
+	if (!match) return { kind: "no-prior-note", meeting };
 
 	const config = llmService.getActiveConfig();
-	const cacheKey = briefCacheKey(upcoming.id, match.note.id, config);
+	const cacheKey = briefCacheKey(meeting.id, match.note.id, config);
 	const cached = briefCache.get(cacheKey);
-	if (cached) {
-		return buildReady(upcoming, match, cached);
-	}
+	if (cached) return buildReady(meeting, match, cached);
 
 	const detail = await fetchPriorNoteDetail(match.note.id);
 	const input: SummarizerInput = {
 		upcoming: {
-			title: upcoming.title,
-			startTime: upcoming.startTime,
-			attendees: upcoming.attendees,
+			title: meeting.title,
+			startTime: meeting.startTime,
+			attendees: meeting.attendees,
 		},
 		priorNote: {
 			id: match.note.id,
@@ -78,29 +84,27 @@ export async function composeBriefState(): Promise<BriefState> {
 		},
 	};
 
-	let markdown: string;
 	try {
-		markdown = await llmService.summarize(input);
+		const markdown = await llmService.summarize(input);
+		briefCache.set(cacheKey, markdown);
+		return buildReady(meeting, match, markdown);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		log.warn("LLM summarize failed", err);
-		return { kind: "error", message };
+		return { kind: "error", meeting, message };
 	}
-
-	briefCache.set(cacheKey, markdown);
-	return buildReady(upcoming, match, markdown);
 }
 
 function buildReady(
-	upcoming: UpcomingMeeting,
+	meeting: UpcomingMeeting,
 	match: MatchResult,
 	markdown: string,
 ): BriefState {
 	return {
 		kind: "ready",
-		meeting: upcoming,
+		meeting,
 		brief: {
-			eventId: upcoming.id,
+			eventId: meeting.id,
 			priorNoteId: match.note.id,
 			priorNoteTitle: match.note.title,
 			priorNoteDate: match.note.created_at,
@@ -115,7 +119,9 @@ async function findPriorNote(
 	const client = granolaService.getClient();
 	if (!client) return null;
 	const startTime = new Date(upcoming.startTime);
-	const since = new Date(startTime.getTime() - 8 * 24 * 60 * 60 * 1000);
+	const since = new Date(
+		startTime.getTime() - MATCH_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+	);
 	try {
 		const notes = await client.listAllNotesSince(since);
 		return matchUpcomingMeeting({ title: upcoming.title, startTime }, notes);

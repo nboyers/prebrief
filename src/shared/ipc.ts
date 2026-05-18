@@ -5,14 +5,20 @@ import type {
 	GoogleStatus,
 	GoogleTestOutcome,
 	GranolaTestOutcome,
+	HomeState,
 	LlmProvider,
 	LlmStatus,
 	LlmTestOutcome,
+	UpcomingMeeting,
 } from "./types";
 
 export type IpcRequestMap = {
 	"app:get-status": { params: void; result: AppStatus };
-	"app:get-brief-state": { params: void; result: BriefState };
+	"app:get-home-state": { params: void; result: HomeState };
+	"app:brief-for-meeting": {
+		params: { meeting: UpcomingMeeting };
+		result: BriefState;
+	};
 	"app:quit": { params: void; result: void };
 	"app:open-settings": { params: void; result: void };
 	"granola:get-status": { params: void; result: { hasKey: boolean } };
@@ -46,7 +52,7 @@ export type IpcRequestMap = {
 };
 
 export type IpcEventMap = {
-	"brief:updated": BriefState;
+	"home:updated": HomeState;
 	"status:updated": AppStatus;
 };
 
