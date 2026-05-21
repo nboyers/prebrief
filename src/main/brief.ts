@@ -1,4 +1,5 @@
 import type { BriefState, HomeState, UpcomingMeeting } from "../shared/types";
+import { pickNoteContent } from "./granola/content";
 import { granolaService } from "./granola/service";
 import type { GranolaNoteDetail } from "./granola/types";
 import { googleService } from "./google/service";
@@ -75,6 +76,10 @@ export async function composeBriefForMeeting(
 	const cached = briefCache.get(cacheKey);
 	if (cached) return buildReady(meeting, match, cached);
 
+	const summary = pickNoteContent(detail);
+	log.info(
+		`Brief: matched note=${detail.id} title="${detail.title}" source=${match.source} summaryLen=${detail.summary?.length ?? 0} summaryTextLen=${detail.summary_text?.length ?? 0} chosenLen=${summary?.length ?? 0}`,
+	);
 	const input: SummarizerInput = {
 		upcoming: {
 			title: meeting.title,
@@ -85,7 +90,7 @@ export async function composeBriefForMeeting(
 			id: match.note.id,
 			title: match.note.title,
 			createdAt: match.note.created_at,
-			summary: detail.summary,
+			summary,
 		},
 	};
 

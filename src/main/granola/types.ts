@@ -20,7 +20,8 @@ export type GranolaTranscriptSegment = {
 };
 
 export type GranolaNoteDetail = GranolaNoteSummary & {
-	summary?: string;
+	summary?: string | null;
+	summary_text?: string | null;
 	transcript?: GranolaTranscriptSegment[];
 };
 
