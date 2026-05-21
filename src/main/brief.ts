@@ -108,6 +108,7 @@ function buildReady(
 			priorNoteId: match.note.id,
 			priorNoteTitle: match.note.title,
 			priorNoteDate: match.note.created_at,
+			priorNoteSource: match.source,
 			markdown,
 		},
 	};
@@ -124,7 +125,14 @@ async function findPriorNote(
 	);
 	try {
 		const notes = await client.listAllNotesSince(since);
-		return matchUpcomingMeeting({ title: upcoming.title, startTime }, notes);
+		return matchUpcomingMeeting(
+			{
+				title: upcoming.title,
+				startTime,
+				calendarEventId: upcoming.calendarEventId,
+			},
+			notes,
+		);
 	} catch (err) {
 		log.warn("Granola fetch for matching failed", err);
 		return null;

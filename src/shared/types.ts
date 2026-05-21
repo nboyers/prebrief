@@ -35,6 +35,7 @@ export type LlmTestOutcome =
 
 export type UpcomingMeeting = {
 	id: string;
+	calendarEventId: string;
 	title: string;
 	startTime: string;
 	endTime: string;
@@ -46,6 +47,7 @@ export type Brief = {
 	priorNoteId: string | null;
 	priorNoteTitle: string | null;
 	priorNoteDate: string | null;
+	priorNoteSource: "calendar" | "title" | null;
 	markdown: string;
 };
 

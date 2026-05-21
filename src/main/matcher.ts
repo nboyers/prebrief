@@ -3,11 +3,15 @@ import type { GranolaNoteSummary } from "./granola/types";
 export type UpcomingCandidate = {
 	title: string;
 	startTime: Date;
+	calendarEventId?: string;
 };
+
+export type MatchSource = "calendar" | "title";
 
 export type MatchResult = {
 	note: GranolaNoteSummary;
 	confidence: number;
+	source: MatchSource;
 };
 
 export type MatchOptions = {
@@ -22,9 +26,11 @@ const DEFAULT_EXCLUDE_RECENT_HOURS = 1;
 const RECURRENCE_PERIOD_DAYS = 7;
 const RECURRENCE_BONUS_PER_DAY_OFFSET = 0.04;
 const MAX_RECURRENCE_BONUS = 0.15;
+const CALENDAR_MATCH_CONFIDENCE = 2;
 
 const PUNCTUATION = /[<>|:;,./\\()[\]"'`~!?@#$%^&*+={}]/g;
 const DASHES = /[\u2013\u2014]/g;
+const RECURRENCE_INSTANCE_SUFFIX = /_\d{8}T\d{6}Z?$/;
 
 export function normalizeTitle(raw: string): string {
 	return raw
@@ -64,20 +70,73 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 	return union === 0 ? 0 : intersection / union;
 }
 
+export function calendarEventBaseId(id: string): string {
+	return id.replace(RECURRENCE_INSTANCE_SUFFIX, "");
+}
+
 export function matchUpcomingMeeting(
 	upcoming: UpcomingCandidate,
 	notes: readonly GranolaNoteSummary[],
 	options: MatchOptions = {},
 ): MatchResult | null {
-	const minSimilarity = options.minSimilarity ?? DEFAULT_MIN_SIMILARITY;
 	const lookbackDays = options.lookbackDays ?? DEFAULT_LOOKBACK_DAYS;
 	const excludeRecentHours =
 		options.excludeRecentHours ?? DEFAULT_EXCLUDE_RECENT_HOURS;
-
 	const windowStart =
 		upcoming.startTime.getTime() - lookbackDays * 24 * 60 * 60 * 1000;
 	const windowEnd =
 		upcoming.startTime.getTime() - excludeRecentHours * 60 * 60 * 1000;
+
+	const calendarMatch = matchByCalendarEvent(
+		upcoming,
+		notes,
+		windowStart,
+		windowEnd,
+	);
+	if (calendarMatch) return calendarMatch;
+
+	return matchByTitle(upcoming, notes, options, windowStart, windowEnd);
+}
+
+function matchByCalendarEvent(
+	upcoming: UpcomingCandidate,
+	notes: readonly GranolaNoteSummary[],
+	windowStart: number,
+	windowEnd: number,
+): MatchResult | null {
+	if (!upcoming.calendarEventId) return null;
+	const upcomingBaseId = calendarEventBaseId(upcoming.calendarEventId);
+
+	let best: { note: GranolaNoteSummary; createdAtMs: number } | null = null;
+	for (const note of notes) {
+		const noteEventId = note.calendar_event?.calendar_event_id;
+		if (!noteEventId) continue;
+		if (calendarEventBaseId(noteEventId) !== upcomingBaseId) continue;
+
+		const createdAtMs = Date.parse(note.created_at);
+		if (Number.isNaN(createdAtMs)) continue;
+		if (createdAtMs < windowStart || createdAtMs > windowEnd) continue;
+
+		if (best === null || createdAtMs > best.createdAtMs) {
+			best = { note, createdAtMs };
+		}
+	}
+	if (best === null) return null;
+	return {
+		note: best.note,
+		confidence: CALENDAR_MATCH_CONFIDENCE,
+		source: "calendar",
+	};
+}
+
+function matchByTitle(
+	upcoming: UpcomingCandidate,
+	notes: readonly GranolaNoteSummary[],
+	options: MatchOptions,
+	windowStart: number,
+	windowEnd: number,
+): MatchResult | null {
+	const minSimilarity = options.minSimilarity ?? DEFAULT_MIN_SIMILARITY;
 	const upcomingTokens = titleTokens(upcoming.title);
 	if (upcomingTokens.size === 0) return null;
 
@@ -96,7 +155,8 @@ export function matchUpcomingMeeting(
 		const daysAgo =
 			(upcoming.startTime.getTime() - createdAtMs) / (24 * 60 * 60 * 1000);
 		const offsetFromPeriod = Math.abs(
-			daysAgo - Math.round(daysAgo / RECURRENCE_PERIOD_DAYS) * RECURRENCE_PERIOD_DAYS,
+			daysAgo -
+				Math.round(daysAgo / RECURRENCE_PERIOD_DAYS) * RECURRENCE_PERIOD_DAYS,
 		);
 		const recurrenceBonus = Math.max(
 			0,
@@ -105,7 +165,7 @@ export function matchUpcomingMeeting(
 		const confidence = similarity + recurrenceBonus;
 
 		if (best === null || confidence > best.confidence) {
-			best = { note, confidence };
+			best = { note, confidence, source: "title" };
 		}
 	}
 	return best;

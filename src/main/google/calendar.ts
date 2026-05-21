@@ -103,6 +103,7 @@ export function toUpcomingMeeting(
 	if (!startTime || !endTime) return null;
 	return {
 		id: event.id,
+		calendarEventId: event.id,
 		title: event.summary ?? "(no title)",
 		startTime,
 		endTime,

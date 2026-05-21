@@ -1,3 +1,7 @@
+export type GranolaCalendarEvent = {
+	calendar_event_id?: string;
+};
+
 export type GranolaNoteSummary = {
 	id: string;
 	object: "note";
@@ -5,6 +9,7 @@ export type GranolaNoteSummary = {
 	owner: { name: string; email: string };
 	created_at: string;
 	updated_at: string;
+	calendar_event?: GranolaCalendarEvent | null;
 };
 
 export type GranolaTranscriptSegment = {

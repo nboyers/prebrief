@@ -107,6 +107,7 @@ describe("toUpcomingMeeting", () => {
 		const result = toUpcomingMeeting(baseEvent);
 		expect(result).toEqual({
 			id: "abc",
+			calendarEventId: "abc",
 			title: "Standup",
 			startTime: "2026-05-20T15:00:00Z",
 			endTime: "2026-05-20T15:30:00Z",

@@ -53,7 +53,8 @@ function renderBody(state: BriefState | null) {
 				<div className="empty">
 					<h3 className="empty__title">No prior meeting found</h3>
 					<p className="empty__subtitle">
-						No Granola note from the past two weeks matches this meeting's title.
+						No Granola note from the past two weeks matches this meeting's
+						title.
 					</p>
 				</div>
 			);
@@ -65,6 +66,9 @@ function renderBody(state: BriefState | null) {
 							Last met: <strong>{state.brief.priorNoteTitle}</strong>
 							{state.brief.priorNoteDate
 								? ` · ${formatDate(state.brief.priorNoteDate)}`
+								: null}
+							{state.brief.priorNoteSource
+								? ` · matched by ${state.brief.priorNoteSource}`
 								: null}
 						</p>
 					)}
