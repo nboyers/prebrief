@@ -143,6 +143,118 @@ describe("GranolaClient.listAllNotesSince", () => {
 	});
 });
 
+describe("GranolaClient.listAllHydratedNotesSince", () => {
+	it("hydrates each summary via getNote and returns details", async () => {
+		const summaries = {
+			notes: [
+				{
+					id: "not_1",
+					object: "note",
+					title: "A",
+					owner: { name: "n", email: "n@x" },
+					created_at: "2026-05-13T00:00:00Z",
+					updated_at: "2026-05-13T00:00:00Z",
+				},
+				{
+					id: "not_2",
+					object: "note",
+					title: "B",
+					owner: { name: "n", email: "n@x" },
+					created_at: "2026-05-14T00:00:00Z",
+					updated_at: "2026-05-14T00:00:00Z",
+				},
+			],
+			hasMore: false,
+		};
+		const details: Record<string, GranolaNoteDetail> = {
+			not_1: {
+				id: "not_1",
+				object: "note",
+				title: "A",
+				owner: { name: "n", email: "n@x" },
+				created_at: "2026-05-13T00:00:00Z",
+				updated_at: "2026-05-13T00:00:00Z",
+				summary: "summary A",
+				calendar_event: { calendar_event_id: "evt_a" },
+			},
+			not_2: {
+				id: "not_2",
+				object: "note",
+				title: "B",
+				owner: { name: "n", email: "n@x" },
+				created_at: "2026-05-14T00:00:00Z",
+				updated_at: "2026-05-14T00:00:00Z",
+				summary: "summary B",
+				calendar_event: { calendar_event_id: "evt_b" },
+			},
+		};
+		const { fetchImpl, calls } = makeFakeFetch((call) => {
+			const url = new URL(call.url);
+			if (url.pathname === "/v1/notes") return jsonResponse(summaries);
+			const match = url.pathname.match(/^\/v1\/notes\/(.+)$/);
+			if (match) return jsonResponse(details[match[1]]);
+			return new Response("not found", { status: 404 });
+		});
+		const client = makeClient(fetchImpl);
+
+		const hydrated = await client.listAllHydratedNotesSince(
+			new Date("2026-05-01T00:00:00Z"),
+		);
+
+		expect(hydrated.map((n) => n.id)).toEqual(["not_1", "not_2"]);
+		expect(hydrated.map((n) => n.summary)).toEqual(["summary A", "summary B"]);
+		expect(hydrated[0].calendar_event?.calendar_event_id).toBe("evt_a");
+		expect(calls).toHaveLength(3);
+	});
+
+	it("skips notes whose detail fetch fails", async () => {
+		const summaries = {
+			notes: [
+				{
+					id: "not_ok",
+					object: "note",
+					title: "A",
+					owner: { name: "n", email: "n@x" },
+					created_at: "2026-05-13T00:00:00Z",
+					updated_at: "2026-05-13T00:00:00Z",
+				},
+				{
+					id: "not_fail",
+					object: "note",
+					title: "B",
+					owner: { name: "n", email: "n@x" },
+					created_at: "2026-05-14T00:00:00Z",
+					updated_at: "2026-05-14T00:00:00Z",
+				},
+			],
+			hasMore: false,
+		};
+		const { fetchImpl } = makeFakeFetch((call) => {
+			const url = new URL(call.url);
+			if (url.pathname === "/v1/notes") return jsonResponse(summaries);
+			if (url.pathname === "/v1/notes/not_ok") {
+				return jsonResponse({
+					id: "not_ok",
+					object: "note",
+					title: "A",
+					owner: { name: "n", email: "n@x" },
+					created_at: "2026-05-13T00:00:00Z",
+					updated_at: "2026-05-13T00:00:00Z",
+					summary: "ok",
+				});
+			}
+			return new Response("boom", { status: 500 });
+		});
+		const client = makeClient(fetchImpl);
+
+		const hydrated = await client.listAllHydratedNotesSince(
+			new Date("2026-05-01T00:00:00Z"),
+		);
+
+		expect(hydrated.map((n) => n.id)).toEqual(["not_ok"]);
+	});
+});
+
 describe("GranolaClient.getNote", () => {
 	it("appends include=transcript when requested", async () => {
 		const detail: GranolaNoteDetail = {

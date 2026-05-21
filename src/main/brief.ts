@@ -7,6 +7,11 @@ import type { LlmConfig, SummarizerInput } from "./llm/types";
 import log from "./log";
 import { matchUpcomingMeeting, type MatchResult } from "./matcher";
 
+type HydratedMatch = {
+	match: MatchResult;
+	detail: GranolaNoteDetail;
+};
+
 export type CurrentStatus = {
 	granolaConnected: boolean;
 	googleConnected: boolean;
@@ -61,15 +66,15 @@ export async function composeHomeState(): Promise<HomeState> {
 export async function composeBriefForMeeting(
 	meeting: UpcomingMeeting,
 ): Promise<BriefState> {
-	const match = await findPriorNote(meeting);
-	if (!match) return { kind: "no-prior-note", meeting };
+	const hydrated = await findPriorNote(meeting);
+	if (!hydrated) return { kind: "no-prior-note", meeting };
 
+	const { match, detail } = hydrated;
 	const config = llmService.getActiveConfig();
 	const cacheKey = briefCacheKey(meeting.id, match.note.id, config);
 	const cached = briefCache.get(cacheKey);
 	if (cached) return buildReady(meeting, match, cached);
 
-	const detail = await fetchPriorNoteDetail(match.note.id);
 	const input: SummarizerInput = {
 		upcoming: {
 			title: meeting.title,
@@ -80,7 +85,7 @@ export async function composeBriefForMeeting(
 			id: match.note.id,
 			title: match.note.title,
 			createdAt: match.note.created_at,
-			summary: detail?.summary,
+			summary: detail.summary,
 		},
 	};
 
@@ -116,7 +121,7 @@ function buildReady(
 
 async function findPriorNote(
 	upcoming: UpcomingMeeting,
-): Promise<MatchResult | null> {
+): Promise<HydratedMatch | null> {
 	const client = granolaService.getClient();
 	if (!client) return null;
 	const startTime = new Date(upcoming.startTime);
@@ -124,8 +129,8 @@ async function findPriorNote(
 		startTime.getTime() - MATCH_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
 	);
 	try {
-		const notes = await client.listAllNotesSince(since);
-		return matchUpcomingMeeting(
+		const notes = await client.listAllHydratedNotesSince(since);
+		const match = matchUpcomingMeeting(
 			{
 				title: upcoming.title,
 				startTime,
@@ -133,21 +138,12 @@ async function findPriorNote(
 			},
 			notes,
 		);
+		if (!match) return null;
+		const detail = notes.find((note) => note.id === match.note.id);
+		if (!detail) return null;
+		return { match, detail };
 	} catch (err) {
 		log.warn("Granola fetch for matching failed", err);
-		return null;
-	}
-}
-
-async function fetchPriorNoteDetail(
-	id: string,
-): Promise<GranolaNoteDetail | null> {
-	const client = granolaService.getClient();
-	if (!client) return null;
-	try {
-		return await client.getNote(id);
-	} catch (err) {
-		log.warn("Granola getNote failed", err);
 		return null;
 	}
 }

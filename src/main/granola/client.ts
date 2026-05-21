@@ -76,6 +76,19 @@ export class GranolaClient {
 		return all;
 	}
 
+	async listAllHydratedNotesSince(since: Date): Promise<GranolaNoteDetail[]> {
+		const summaries = await this.listAllNotesSince(since);
+		const settled = await Promise.allSettled(
+			summaries.map((summary) => this.getNote(summary.id)),
+		);
+		return settled
+			.filter(
+				(result): result is PromiseFulfilledResult<GranolaNoteDetail> =>
+					result.status === "fulfilled",
+			)
+			.map((result) => result.value);
+	}
+
 	async getNote(
 		id: string,
 		options: { includeTranscript?: boolean } = {},
